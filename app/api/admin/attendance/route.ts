@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const FALLBACK_ATTENDANCE_URL =
-  'http://n1065v34z9435876yrwcc9mx.213.136.66.81.sslip.io/api/attendance';
+  "https://generic-rotary-backend.vercel.app/api/attendance";
 
 function jsonResponse(payload: AttendanceResponse, status: number) {
   const response = NextResponse.json(payload, { status });

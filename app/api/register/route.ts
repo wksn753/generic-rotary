@@ -8,7 +8,7 @@ type RegisterPayload = Partial<Submission> & {
 };
 
 const FALLBACK_BACKEND_URL =
-  'http://n1065v34z9435876yrwcc9mx.213.136.66.81.sslip.io/api/register';
+  "https://generic-rotary-backend.vercel.app/api/register";
 
 function cleanText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';

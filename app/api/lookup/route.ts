@@ -4,7 +4,7 @@ import type { LookupResponse } from '../../lib/definitions';
 export const runtime = 'nodejs';
 
 const FALLBACK_LOOKUP_URL =
-  'http://n1065v34z9435876yrwcc9mx.213.136.66.81.sslip.io/api/visitors/lookup';
+  "https://generic-rotary-backend.vercel.app/api/visitors/lookup";
 
 function cleanText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
