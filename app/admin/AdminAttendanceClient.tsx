@@ -242,7 +242,7 @@ export default function AdminAttendanceClient() {
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = `kitende-breeze-attendance-${date}${query.trim() ? '-filtered' : ''}.csv`;
+    link.download = `rc-nakawa-attendance-${date}${query.trim() ? '-filtered' : ''}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
