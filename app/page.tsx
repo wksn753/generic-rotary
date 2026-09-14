@@ -27,6 +27,21 @@ type AttendanceSubmission = Submission & {
   customClub: boolean;
 };
 
+type RememberedProfile = {
+  fullName: string;
+  phone: string;
+  email: string;
+  rotaryClub: string;
+  baseRotaryClub: string;
+  buddyGroup: string;
+  invitedBy: string;
+  customClub: boolean;
+  classification: string;
+  renewedAt?: string;
+};
+
+const ATTENDANCE_PROFILE_COOKIE = "rotary_attendance_profile";
+
 const ROTARY_BLUE_PATH =
   "M172.73 137.43l.42 8a2.42 2.42 0 0 1-1.94 2.48 73.18 73.18 0 0 1-10.88 1.37c-14.56 0-19-5.57-19-23.82V97.52h-5.59a2.41 2.41 0 0 1-2.4-2.41v-8.25a2.4 2.4 0 0 1 2.4-2.39h5.59v-9.81a2.4 2.4 0 0 1 1.82-2.33l9.66-2.35a2.39 2.39 0 0 1 3 2.33v12.16h14.72a2.4 2.4 0 0 1 2.39 2.39v8.25a2.41 2.41 0 0 1-2.39 2.41h-14.76v25.85c0 8.94.32 12 6.59 12 2.31 0 5.94-.15 7.88-.26a2.4 2.4 0 0 1 2.49 2.32zm-45.59-21.66c0 23-8.75 33.31-28.36 33.31s-28.51-10.31-28.51-33.31c0-22.7 8.79-32.82 28.51-32.82 19.35 0 28.36 10.42 28.36 32.82zm-14.69 0c0-14.14-3.84-19.64-13.67-19.64-10.2 0-13.78 5.13-13.78 19.64 0 13.16 2.2 20.27 13.82 20.27 11.39 0 13.63-7.43 13.63-20.27zM342.8 85.4a2.34 2.34 0 0 0-1.88-.93h-9.38a2.39 2.39 0 0 0-2.31 1.78l-12.56 47.38h-1l-12.55-47.38a2.39 2.39 0 0 0-2.32-1.78h-9.36a2.39 2.39 0 0 0-2.33 3l13.83 53.14c.7 2.63 3.13 7.09 7.95 7.09h2.68c-.23.89-.47 1.84-.73 2.65l-.13.41c-.75 2.45-1.88 6.15-8.72 6.15l-12-.73a2.34 2.34 0 0 0-1.83.67 2.4 2.4 0 0 0-.72 1.83l.3 6.26a2.36 2.36 0 0 0 1.82 2.22 90.6 90.6 0 0 0 15.81 2.1h.76c9 0 15.15-5.84 18.24-17.34 3.58-13.48 8.07-30.8 11.35-43.46l3.67-14.11 1.8-6.89a2.33 2.33 0 0 0-.39-2.06zM61.47 144.34a2.49 2.49 0 0 1-.18 2.28 2.46 2.46 0 0 1-2 1.08H48.06a2.36 2.36 0 0 1-2.19-1.43l-14.36-32.3c-7.14 0-13.34-.43-16.69-.67v32a2.39 2.39 0 0 1-2.39 2.4h-10A2.41 2.41 0 0 1 0 145.3v-81a2.39 2.39 0 0 1 2.14-2.38 248.23 248.23 0 0 1 27-1.61h2C55.8 60.31 61 74.88 61 87.08c0 10.19-4.86 17.56-14.87 22.53zM31.08 74.21h-5.29a59.24 59.24 0 0 0-11 .78v25c2.82.2 8.26.48 15.55.4 9.42-.09 15.28-5.09 15.28-13 .03-6.4-3.8-13.18-14.54-13.18zm200.6 30.15v41.92a2.41 2.41 0 0 1-2.68 2.39 18 18 0 0 1-9.57-4c-.1.05-10.94 4.42-20.65 4.42-11.67 0-18.37-7.37-18.37-20.25 0-12.58 6.14-18.15 21.17-19.28l15.71-1.25v-3.82c0-4.82-2.88-7.59-7.87-7.59-6.88 0-16.7.8-21.92 1.27a2.38 2.38 0 0 1-1.82-.58 2.46 2.46 0 0 1-.82-1.7l-.3-8a2.38 2.38 0 0 1 2-2.47c4.68-.74 16.35-2.44 23.63-2.44 14.65-.03 21.49 6.79 21.49 21.38zm-28.39 16c-5.67.54-8.35 3.13-8.35 8.12 0 3.08.83 8.26 6.45 8.26 6.68 0 15.74-2.53 15.85-2.55v-14.62zm75.27-36.32c-6.37.38-12.66 4-16.57 6.81v-3.99a2.39 2.39 0 0 0-2.41-2.39h-9.64a2.4 2.4 0 0 0-2.42 2.39v58.44a2.4 2.4 0 0 0 2.42 2.4h9.64a2.4 2.4 0 0 0 2.41-2.4v-40.39c2.17-1.82 8.91-6.87 16.94-7.57a2.41 2.41 0 0 0 2.18-2.4v-8.56a2.41 2.41 0 0 0-2.55-2.39z";
 
@@ -362,6 +377,31 @@ function getFriendlySubmitError(
   };
 }
 
+function readRememberedProfile(): RememberedProfile | null {
+  if (typeof document === "undefined") return null;
+
+  const cookie = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${ATTENDANCE_PROFILE_COOKIE}=`));
+
+  if (!cookie) return null;
+
+  try {
+    const value = cookie.slice(ATTENDANCE_PROFILE_COOKIE.length + 1);
+    const parsed = JSON.parse(decodeURIComponent(value)) as RememberedProfile;
+    if (!parsed?.fullName || (!parsed.email && !parsed.phone)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function removeRememberedProfileCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = `${ATTENDANCE_PROFILE_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
+
 export default function Page() {
   const formCardRef = useRef<HTMLDivElement | null>(null);
   const userScrolledRef = useRef(false);
@@ -390,6 +430,10 @@ export default function Page() {
   const [honeypot, setHoneypot] = useState("");
   const [lookupContact, setLookupContact] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [rememberedProfile, setRememberedProfile] = useState<RememberedProfile | null>(null);
+  const [showRememberedConfirm, setShowRememberedConfirm] = useState(false);
+  const [quickCheckinLoading, setQuickCheckinLoading] = useState(false);
+  const [quickCheckinError, setQuickCheckinError] = useState("");
 
   const isNonMember = selectedClub === NON_MEMBER;
 
@@ -419,8 +463,11 @@ export default function Page() {
     ).matches;
     const alreadySeen =
       sessionStorage.getItem("kitende-breeze-splash-seen") === "true";
+    const hasRememberedAttendance = Boolean(readRememberedProfile());
 
-    if (alreadySeen || reduceMotion) {
+    // Returning attendees who opened a QR/check-in link should reach the
+    // confirmation prompt immediately instead of waiting through the splash.
+    if (alreadySeen || reduceMotion || hasRememberedAttendance) {
       setShowSplash(false);
       setAppReady(true);
       return;
@@ -435,6 +482,14 @@ export default function Page() {
     }, 4500);
 
     return () => window.clearTimeout(splashDone);
+  }, []);
+
+  useEffect(() => {
+    const profile = readRememberedProfile();
+    if (profile) {
+      setRememberedProfile(profile);
+      setShowRememberedConfirm(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -677,6 +732,93 @@ export default function Page() {
     return Object.keys(nextErrors).length === 0;
   }
 
+  function editRememberedProfile() {
+    if (!rememberedProfile) return;
+    const restored = splitClubAndBuddyGroup(rememberedProfile.rotaryClub || "");
+    const restoredClub = rememberedProfile.baseRotaryClub || restored.club;
+
+    setFullName(rememberedProfile.fullName || "");
+    setPhone(rememberedProfile.phone || "");
+    setEmail(rememberedProfile.email || "");
+    setSelectedClub(restoredClub || "");
+    setClubQuery(restoredClub && restoredClub !== NON_MEMBER ? restoredClub : "");
+    setBuddyGroup(normalizeBuddyGroup(rememberedProfile.buddyGroup || restored.buddyGroup || ""));
+    setInvitedBy(rememberedProfile.invitedBy || "");
+    setClassification(rememberedProfile.classification || "");
+    setShowRememberedConfirm(false);
+    setQuickCheckinError("");
+    window.setTimeout(scrollToForm, 100);
+  }
+
+  function forgetRememberedProfile() {
+    removeRememberedProfileCookie();
+    setRememberedProfile(null);
+    setShowRememberedConfirm(false);
+    setQuickCheckinError("");
+  }
+
+  async function confirmRememberedAttendance() {
+    if (!rememberedProfile || quickCheckinLoading) return;
+
+    setQuickCheckinLoading(true);
+    setQuickCheckinError("");
+    const attendanceDate = todayInKampalaISO();
+    const restored = splitClubAndBuddyGroup(rememberedProfile.rotaryClub || "");
+    const baseRotaryClub = rememberedProfile.baseRotaryClub || restored.club;
+    const buddy = normalizeBuddyGroup(rememberedProfile.buddyGroup || restored.buddyGroup || "");
+
+    const submission: AttendanceSubmission = {
+      fullName: rememberedProfile.fullName,
+      phone: formatUgandanPhone(rememberedProfile.phone || ""),
+      email: (rememberedProfile.email || "").trim().toLowerCase(),
+      baseRotaryClub,
+      buddyGroup: buddy,
+      invitedBy: collapseWhitespace(rememberedProfile.invitedBy || ""),
+      customClub: Boolean(rememberedProfile.customClub),
+      rotaryClub: combineClubAndBuddyGroup(baseRotaryClub, buddy),
+      classification: rememberedProfile.classification || "",
+      purpose: "Club Fellowship",
+      otherPurpose: "",
+      event: eventNameForPurpose("Club Fellowship"),
+      date: attendanceDate,
+      attendanceDate,
+      venue: "Rotary Club Fellowship",
+      submittedAt: new Date().toISOString(),
+      checkInSource: "remembered-cookie",
+    };
+
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(submission),
+      });
+
+      let data: RegistrationResponse | null = null;
+      try {
+        data = (await response.json()) as RegistrationResponse;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok || !data?.success) {
+        setQuickCheckinError(data?.message || "We could not record attendance. Please try again.");
+        return;
+      }
+
+      setRememberedProfile({ ...rememberedProfile, renewedAt: new Date().toISOString() });
+      setShowRememberedConfirm(false);
+      setSuccess(submission);
+      if (data.alreadyRegistered) {
+        setNotice({ type: "info", title: "Already checked in", message: data.message || "Attendance was already recorded for today." });
+      }
+    } catch {
+      setQuickCheckinError("Connection problem. Please check your connection and try again.");
+    } finally {
+      setQuickCheckinLoading(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -798,6 +940,35 @@ export default function Page() {
   return (
     <main>
       <div className="scroll-progress" style={{ width: `${progress}%` }} />
+
+      {showRememberedConfirm && rememberedProfile && !showSplash && (
+        <div className="attendance-confirm-backdrop" role="presentation">
+          <section className="attendance-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-confirm-title">
+            <span className="attendance-confirm-kicker">Quick attendance</span>
+            <h2 id="attendance-confirm-title">Confirm your attendance</h2>
+            <p className="attendance-confirm-copy">Your saved details were found on this device. Nothing is recorded until you confirm below.</p>
+
+            <div className="attendance-confirm-profile">
+              <strong>{rememberedProfile.fullName}</strong>
+              <span>{rememberedProfile.phone || rememberedProfile.email}</span>
+              {rememberedProfile.email && rememberedProfile.phone && <span>{rememberedProfile.email}</span>}
+              <span>{rememberedProfile.rotaryClub || rememberedProfile.baseRotaryClub}</span>
+              {rememberedProfile.buddyGroup && <span>Buddy group: {rememberedProfile.buddyGroup}</span>}
+            </div>
+
+            {quickCheckinError && <p className="attendance-confirm-error">{quickCheckinError}</p>}
+
+            <button className="attendance-confirm-primary" type="button" onClick={confirmRememberedAttendance} disabled={quickCheckinLoading}>
+              {quickCheckinLoading ? "Recording attendance…" : "Confirm attendance"}
+            </button>
+            <div className="attendance-confirm-actions">
+              <button type="button" onClick={editRememberedProfile} disabled={quickCheckinLoading}>Edit details</button>
+              <button type="button" onClick={forgetRememberedProfile} disabled={quickCheckinLoading}>Not me</button>
+            </div>
+            <small>Successful attendance renews these saved details for another 30 days.</small>
+          </section>
+        </div>
+      )}
 
       {showSplash && <SplashScreen />}
 

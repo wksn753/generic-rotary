@@ -66,3 +66,12 @@ Open `/admin`. Unauthenticated users are sent to `/admin/login`; attendance data
 ## Backend admin key warning
 
 If the dashboard loads but shows an attendance error, check `ADMIN_API_KEY`. When the Go backend has `ADMIN_API_KEY` set, the frontend deployment must use the exact same value. A backend key mismatch now shows an error on the dashboard instead of clearing the admin session and sending the user back to login.
+
+
+## Attendance memory + club operations
+
+A successful attendance confirmation now stores a 30-day `rotary_attendance_profile` browser cookie containing the attendee's check-in profile. Opening the attendance page again on that device shows a confirmation dialog with the saved details; it never auto-registers. The attendee must tap **Confirm attendance**, and every successful confirmation renews the cookie for another 30 days. **Edit details** restores the profile into the normal form, while **Not me** clears the saved identity for shared devices. Returning attendees with the cookie skip the splash screen so QR check-in stays fast.
+
+The admin dashboard now has dedicated areas for overview analytics, attendance, club members, donations, goals, Rotary projects/finances/invoices, and communications. Communications are only queued from Next.js; scheduling, retrying, visitor alerts and actual Savara Mail sends run in the Go backend.
+
+Set `REGISTRATION_BACKEND_ROOT_URL` when the backend root cannot be reliably derived from `REGISTRATION_API_URL`. The frontend `ADMIN_API_KEY` must match the Go backend value.
