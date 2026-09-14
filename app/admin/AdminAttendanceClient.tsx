@@ -10,6 +10,7 @@ import type {
   ClubMember,
   Donation,
   EmailCampaign,
+  EmailTemplate,
   OperationsDashboard,
   ProjectSummary,
 } from '../lib/definitions';
@@ -24,6 +25,149 @@ type ApiResult<T = Record<string, unknown>> = T & {
   message?: string;
   code?: string;
 };
+
+type EmailTemplateDraft = {
+  name: string;
+  description: string;
+  subject: string;
+  preheader: string;
+  accentColor: string;
+  logoUrl: string;
+  partnerLogoUrl: string;
+  heroImageUrl: string;
+  heading: string;
+  bodyText: string;
+  buttonLabel: string;
+  buttonUrl: string;
+  footerText: string;
+};
+
+const BLANK_EMAIL_TEMPLATE: EmailTemplateDraft = {
+  name: '',
+  description: '',
+  subject: '',
+  preheader: '',
+  accentColor: '#17458f',
+  logoUrl: '',
+  partnerLogoUrl: '',
+  heroImageUrl: '',
+  heading: '',
+  bodyText: '',
+  buttonLabel: '',
+  buttonUrl: '',
+  footerText: 'Rotary Club · Service Above Self',
+};
+
+const STARTER_EMAIL_TEMPLATES: EmailTemplateDraft[] = [
+  {
+    name: 'Meeting reminder',
+    description: 'A clean reminder for an upcoming fellowship or club meeting.',
+    subject: 'Reminder: our next Rotary meeting',
+    preheader: 'We look forward to seeing you.',
+    accentColor: '#17458f',
+    logoUrl: '',
+    partnerLogoUrl: '',
+    heroImageUrl: '',
+    heading: 'We look forward to seeing you',
+    bodyText: 'Hello {{first_name}},\n\nThis is a friendly reminder about our upcoming Rotary meeting. We look forward to fellowship, updates and another opportunity to serve together.',
+    buttonLabel: 'View meeting details',
+    buttonUrl: '',
+    footerText: 'Rotary Club · Service Above Self',
+  },
+  {
+    name: 'Thank you',
+    description: 'A warm follow-up after a meeting, event or visit.',
+    subject: 'Thank you for joining us',
+    preheader: 'Thank you for spending time with our Rotary family.',
+    accentColor: '#17458f',
+    logoUrl: '',
+    partnerLogoUrl: '',
+    heroImageUrl: '',
+    heading: 'Thank you for joining us',
+    bodyText: 'Dear {{first_name}},\n\nThank you for attending. Your presence helped make the gathering meaningful, and we hope to welcome you again soon.',
+    buttonLabel: '',
+    buttonUrl: '',
+    footerText: 'With appreciation, your Rotary Club',
+  },
+  {
+    name: 'Project update',
+    description: 'Share progress, milestones and calls to action for a Rotary project.',
+    subject: 'Rotary project update',
+    preheader: 'A quick update from the club.',
+    accentColor: '#17458f',
+    logoUrl: '',
+    partnerLogoUrl: '',
+    heroImageUrl: '',
+    heading: 'Project progress update',
+    bodyText: 'Hello {{first_name}},\n\nHere is the latest update from our club project. Thank you to every member and partner helping us move this work forward.',
+    buttonLabel: 'Learn more',
+    buttonUrl: '',
+    footerText: 'Together, we create lasting change.',
+  },
+];
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  }[character] || character));
+}
+
+function safeImageUrl(value: string) {
+  const trimmed = value.trim();
+  return /^https:\/\//i.test(trimmed) ? trimmed : '';
+}
+
+function safeLinkUrl(value: string) {
+  const trimmed = value.trim();
+  return /^https:\/\//i.test(trimmed) || /^mailto:/i.test(trimmed) ? trimmed : '';
+}
+
+function buildEmailHtml(template: EmailTemplateDraft) {
+  const accent = /^#[0-9a-f]{6}$/i.test(template.accentColor) ? template.accentColor : '#17458f';
+  const logoUrl = safeImageUrl(template.logoUrl);
+  const partnerLogoUrl = safeImageUrl(template.partnerLogoUrl);
+  const heroImageUrl = safeImageUrl(template.heroImageUrl);
+  const buttonUrl = safeLinkUrl(template.buttonUrl);
+  const body = escapeHtml(template.bodyText)
+    .split(/\n{2,}/)
+    .filter(Boolean)
+    .map((paragraph) => `<p style="margin:0 0 18px;color:#334155;font-size:15px;line-height:1.7;">${paragraph.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(template.preheader)}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:32px 16px;"><tr><td align="center">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e6e9ee;">
+      <tr><td style="height:6px;background:${accent};font-size:0;line-height:0;">&nbsp;</td></tr>
+      ${(logoUrl || partnerLogoUrl) ? `<tr><td style="padding:26px 34px 12px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>${logoUrl ? `<td align="left"><img src="${escapeHtml(logoUrl)}" alt="Club logo" style="display:block;max-width:180px;max-height:72px;width:auto;height:auto;"></td>` : '<td></td>'}${partnerLogoUrl ? `<td align="right"><img src="${escapeHtml(partnerLogoUrl)}" alt="Partner logo" style="display:block;max-width:140px;max-height:60px;width:auto;height:auto;"></td>` : ''}</tr></table></td></tr>` : ''}
+      ${heroImageUrl ? `<tr><td style="padding:16px 34px 0;"><img src="${escapeHtml(heroImageUrl)}" alt="" style="display:block;width:100%;height:auto;border-radius:12px;"></td></tr>` : ''}
+      <tr><td style="padding:30px 34px 12px;">
+        ${template.heading ? `<h1 style="margin:0 0 18px;color:#0b1f3a;font-size:30px;line-height:1.2;font-family:Georgia,'Times New Roman',serif;">${escapeHtml(template.heading)}</h1>` : ''}
+        ${body}
+        ${template.buttonLabel && buttonUrl ? `<p style="margin:26px 0 8px;"><a href="${escapeHtml(buttonUrl)}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 20px;border-radius:8px;">${escapeHtml(template.buttonLabel)}</a></p>` : ''}
+      </td></tr>
+      <tr><td style="padding:18px 34px 28px;border-top:1px solid #edf0f3;color:#7c8798;font-size:12px;line-height:1.6;">${escapeHtml(template.footerText || 'Rotary Club')}</td></tr>
+    </table>
+  </td></tr></table></body></html>`;
+}
+
+function toDraft(template: EmailTemplate): EmailTemplateDraft {
+  return {
+    name: template.name || '',
+    description: template.description || '',
+    subject: template.subject || '',
+    preheader: template.preheader || '',
+    accentColor: template.accentColor || '#17458f',
+    logoUrl: template.logoUrl || '',
+    partnerLogoUrl: template.partnerLogoUrl || '',
+    heroImageUrl: template.heroImageUrl || '',
+    heading: template.heading || '',
+    bodyText: template.bodyText || '',
+    buttonLabel: template.buttonLabel || '',
+    buttonUrl: template.buttonUrl || '',
+    footerText: template.footerText || '',
+  };
+}
 
 function getStoredAdminToken() {
   if (typeof window === 'undefined') return '';
@@ -118,9 +262,12 @@ export default function AdminAttendanceClient() {
   const [goals, setGoals] = useState<ClubGoal[]>([]);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [attendanceError, setAttendanceError] = useState('');
+  const [operationsError, setOperationsError] = useState('');
   const [flash, setFlash] = useState('');
   const [attendanceQuery, setAttendanceQuery] = useState('');
   const [attendancePage, setAttendancePage] = useState(1);
@@ -132,7 +279,10 @@ export default function AdminAttendanceClient() {
   const [projectForm, setProjectForm] = useState({ name: '', description: '', status: 'planned', startDate: todayInKampalaISO(), endDate: '', budget: '', currency: 'UGX' });
   const [transactionForm, setTransactionForm] = useState({ projectId: '', type: 'expense', amount: '', category: '', description: '', transactionDate: todayInKampalaISO(), reference: '' });
   const [invoiceForm, setInvoiceForm] = useState({ projectId: '', invoiceNumber: '', vendor: '', customer: '', description: '', amount: '', currency: 'UGX', status: 'unpaid', issueDate: todayInKampalaISO(), dueDate: '', fileUrl: '' });
-  const [campaignForm, setCampaignForm] = useState({ name: '', audience: 'members', subject: '', body: '', attendanceDate: todayInKampalaISO(), scheduledAt: '' });
+  const [campaignForm, setCampaignForm] = useState({ audience: 'members', recipientName: '', recipientEmail: '', attendanceDate: todayInKampalaISO(), scheduledAt: '' });
+  const [emailDraft, setEmailDraft] = useState<EmailTemplateDraft>({ ...STARTER_EMAIL_TEMPLATES[0] });
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateMode, setTemplateMode] = useState<'starter' | 'saved' | 'custom'>('starter');
 
   async function adminFetch<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
     const response = await fetch(path, {
@@ -181,18 +331,46 @@ export default function AdminAttendanceClient() {
     setGoals(goalData.goals || []);
     setProjects(projectData.projects || []);
     setCampaigns(campaignData.campaigns || []);
+    try {
+      const templateData = await adminFetch<{ templates: EmailTemplate[] }>('/api/admin/ops/email-templates');
+      setTemplates(templateData.templates || []);
+    } catch {
+      // Keep the rest of club operations usable if the optional template
+      // migration has not been applied yet.
+      setTemplates([]);
+    }
+  }
+
+  async function refreshAttendance(selectedDate = date) {
+    setLoading(true);
+    setAttendanceError('');
+    try {
+      await loadAttendance(selectedDate);
+    } catch (err) {
+      setAttendanceError(err instanceof Error ? err.message : 'Could not load attendance.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function refreshAll(selectedDate = date) {
     setLoading(true);
     setError('');
-    try {
-      await Promise.all([loadAttendance(selectedDate), loadOperations(selectedDate)]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load the admin workspace.');
-    } finally {
-      setLoading(false);
+    setAttendanceError('');
+    setOperationsError('');
+
+    const [attendanceResult, operationsResult] = await Promise.allSettled([
+      loadAttendance(selectedDate),
+      loadOperations(selectedDate),
+    ]);
+
+    if (attendanceResult.status === 'rejected') {
+      setAttendanceError(attendanceResult.reason instanceof Error ? attendanceResult.reason.message : 'Could not load attendance.');
     }
+    if (operationsResult.status === 'rejected') {
+      setOperationsError(operationsResult.reason instanceof Error ? operationsResult.reason.message : 'Could not load club operations.');
+    }
+    setLoading(false);
   }
 
   useEffect(() => { void refreshAll(date); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -286,9 +464,71 @@ export default function AdminAttendanceClient() {
     event.preventDefault();
     await withAction(async () => {
       const scheduledAt = campaignForm.scheduledAt ? new Date(campaignForm.scheduledAt).toISOString() : new Date().toISOString();
-      await adminFetch('/api/admin/ops/campaigns', { method: 'POST', body: JSON.stringify({ ...campaignForm, scheduledAt, createdBy: 'Admin' }) });
-      setCampaignForm((current) => ({ ...current, name: '', subject: '', body: '', scheduledAt: '' }));
-    }, 'Email campaign queued on the Go backend.');
+      const templateId = selectedTemplateId ? Number(selectedTemplateId) : undefined;
+      await adminFetch('/api/admin/ops/campaigns', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: emailDraft.subject || emailDraft.heading || 'Email notification',
+          audience: campaignForm.audience,
+          recipientName: campaignForm.recipientName,
+          recipientEmail: campaignForm.recipientEmail,
+          attendanceDate: campaignForm.attendanceDate,
+          scheduledAt,
+          templateId,
+          subject: emailDraft.subject,
+          body: buildEmailHtml(emailDraft),
+          createdBy: 'Admin',
+        }),
+      });
+      setCampaignForm((current) => ({ ...current, recipientName: '', recipientEmail: '', scheduledAt: '' }));
+    }, campaignForm.audience === 'single' ? 'Email queued for delivery.' : 'Email notification queued for delivery.');
+  }
+
+  function useStarterTemplate(template: EmailTemplateDraft) {
+    setEmailDraft({ ...template });
+    setSelectedTemplateId('');
+    setTemplateMode('starter');
+  }
+
+  function useSavedTemplate(template: EmailTemplate) {
+    setEmailDraft(toDraft(template));
+    setSelectedTemplateId(String(template.ID));
+    setTemplateMode('saved');
+  }
+
+  function startBlankTemplate() {
+    setEmailDraft({ ...BLANK_EMAIL_TEMPLATE });
+    setSelectedTemplateId('');
+    setTemplateMode('custom');
+  }
+
+  async function saveEmailTemplate() {
+    if (!emailDraft.name.trim()) {
+      setError('Give the template a name before saving it.');
+      return;
+    }
+    await withAction(async () => {
+      const payload = JSON.stringify({ ...emailDraft, createdBy: 'Admin' });
+      if (selectedTemplateId) {
+        await adminFetch(`/api/admin/ops/email-templates/${selectedTemplateId}`, { method: 'PATCH', body: payload });
+      } else {
+        const data = await adminFetch<{ template: EmailTemplate }>('/api/admin/ops/email-templates', { method: 'POST', body: payload });
+        if (data.template?.ID) setSelectedTemplateId(String(data.template.ID));
+      }
+      setTemplateMode('saved');
+    }, selectedTemplateId ? 'Email template updated.' : 'Email template saved.');
+  }
+
+  async function deleteEmailTemplate(template: EmailTemplate) {
+    if (!window.confirm(`Delete the template "${template.name}"?`)) return;
+    await withAction(async () => {
+      await adminFetch(`/api/admin/ops/email-templates/${template.ID}`, { method: 'DELETE' });
+      if (selectedTemplateId === String(template.ID)) {
+        setSelectedTemplateId('');
+        setEmailDraft({ ...STARTER_EMAIL_TEMPLATES[0] });
+        setTemplateMode('starter');
+      }
+    }, 'Email template deleted.');
   }
 
   async function logout() {
@@ -327,6 +567,8 @@ export default function AdminAttendanceClient() {
         </nav>
 
         {error && <p className="admin-error ops-message">{error}</p>}
+        {tab === 'attendance' && attendanceError && <p className="admin-error ops-message">{attendanceError}</p>}
+        {tab !== 'attendance' && operationsError && <p className="admin-error ops-message">{operationsError}</p>}
         {flash && <p className="ops-success ops-message">{flash}</p>}
 
         {tab === 'overview' && (
@@ -375,7 +617,7 @@ export default function AdminAttendanceClient() {
             <div className="ops-toolbar">
               <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
               <label className="grow">Search<input type="search" value={attendanceQuery} onChange={(event) => { setAttendanceQuery(event.target.value); setAttendancePage(1); }} placeholder="Name, club, buddy group, email..." /></label>
-              <button type="button" onClick={() => refreshAll(date)} disabled={loading}>View day</button>
+              <button type="button" onClick={() => refreshAttendance(date)} disabled={loading}>View day</button>
               <button type="button" className="secondary" onClick={downloadCSV} disabled={!filteredAttendance.length}>CSV</button>
             </div>
             <DataTable headers={['Guest', 'Contact', 'Club / group', 'Purpose', 'Time']}>
@@ -514,24 +756,186 @@ export default function AdminAttendanceClient() {
         )}
 
         {tab === 'communications' && (
-          <section className="ops-split-layout">
-            <form className="ops-form-card" onSubmit={submitCampaign}>
-              <FormHeading eyebrow="Email notifications" title="Send or schedule a message" copy="All recipients are queued in PostgreSQL and sent by the Go backend through Savara Mail." />
-              <Input label="Campaign name" value={campaignForm.name} onChange={(value) => setCampaignForm({ ...campaignForm, name: value })} placeholder="Monday reminder" />
-              <Select label="Audience" value={campaignForm.audience} onChange={(value) => setCampaignForm({ ...campaignForm, audience: value })} options={['members', 'all_attendees', 'visitors', 'attendance_date']} />
-              {campaignForm.audience === 'attendance_date' && <Input label="Attendance date" type="date" value={campaignForm.attendanceDate} onChange={(value) => setCampaignForm({ ...campaignForm, attendanceDate: value })} />}
-              <Input label="Subject" required value={campaignForm.subject} onChange={(value) => setCampaignForm({ ...campaignForm, subject: value })} />
-              <Textarea label="Message (HTML accepted)" required rows={7} value={campaignForm.body} onChange={(value) => setCampaignForm({ ...campaignForm, body: value })} />
-              <Input label="Schedule for (optional)" type="datetime-local" value={campaignForm.scheduledAt} onChange={(value) => setCampaignForm({ ...campaignForm, scheduledAt: value })} />
-              <SubmitButton loading={actionLoading}>Queue email campaign</SubmitButton>
-              <small className="ops-form-note">Leave the schedule blank to send on the next Go mail-worker run. Automated visitor alerts and next-day attendance thank-yous run independently.</small>
-            </form>
+          <section className="ops-communications-page">
+            <div className="ops-communications-main">
+              <form className="ops-form-card ops-email-composer" onSubmit={submitCampaign}>
+                <FormHeading
+                  eyebrow="Communications"
+                  title="Create an email"
+                  copy="Choose who should receive it, design the message visually, then send now or schedule it. No HTML required."
+                />
 
-            <div className="ops-panel">
-              <header className="ops-section-heading"><div><span>Email campaigns</span><strong>Recent notifications</strong></div><em>{dashboard?.pendingMailJobs || 0} jobs pending</em></header>
-              <div className="ops-campaign-list">
-                {campaigns.map((campaign) => <article key={campaign.ID}><div><strong>{campaign.name || campaign.subject}</strong><span>{campaign.audience.replace(/_/g, ' ')} · {displayDateTime(campaign.scheduledAt)}</span></div><em className={`status-${campaign.status}`}>{campaign.status}</em><small>{campaign.sentCount} sent · {campaign.failedCount} failed</small></article>)}
-                {!campaigns.length && <Empty text="No bulk email campaigns have been created yet." />}
+                <div className="ops-email-step">
+                  <div className="ops-email-step-title"><span>1</span><div><strong>Recipients</strong><small>Send one email or notify a group.</small></div></div>
+                  <Select
+                    label="Send to"
+                    value={campaignForm.audience}
+                    onChange={(value) => setCampaignForm({ ...campaignForm, audience: value })}
+                    options={['single', 'members', 'visitors', 'all_attendees', 'attendance_date']}
+                  />
+                  {campaignForm.audience === 'single' && (
+                    <div className="ops-two-fields">
+                      <Input label="Recipient name" value={campaignForm.recipientName} onChange={(value) => setCampaignForm({ ...campaignForm, recipientName: value })} placeholder="e.g. Sarah Kato" />
+                      <Input label="Recipient email" type="email" required value={campaignForm.recipientEmail} onChange={(value) => setCampaignForm({ ...campaignForm, recipientEmail: value })} placeholder="name@example.com" />
+                    </div>
+                  )}
+                  {campaignForm.audience === 'attendance_date' && (
+                    <Input label="Attendance date" type="date" value={campaignForm.attendanceDate} onChange={(value) => setCampaignForm({ ...campaignForm, attendanceDate: value })} />
+                  )}
+                </div>
+
+                <div className="ops-email-step">
+                  <div className="ops-email-step-title">
+                    <span>2</span>
+                    <div><strong>Template</strong><small>Start from a proven layout or make your own.</small></div>
+                    <button className="ops-inline-button" type="button" onClick={startBlankTemplate}>Start blank</button>
+                  </div>
+                  <div className="ops-template-quick-picks">
+                    {STARTER_EMAIL_TEMPLATES.map((template) => (
+                      <button type="button" key={template.name} onClick={() => useStarterTemplate(template)}>
+                        <strong>{template.name}</strong>
+                        <small>{template.description}</small>
+                      </button>
+                    ))}
+                  </div>
+                  {!!templates.length && (
+                    <label className="ops-field">
+                      Saved club templates
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(event) => {
+                          const template = templates.find((item) => String(item.ID) === event.target.value);
+                          if (template) useSavedTemplate(template);
+                        }}
+                      >
+                        <option value="">Choose a saved template</option>
+                        {templates.map((template) => <option key={template.ID} value={template.ID}>{template.name}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  <div className="ops-template-metadata">
+                    <Input label="Template name" value={emailDraft.name} onChange={(value) => setEmailDraft({ ...emailDraft, name: value })} placeholder="e.g. Weekly meeting reminder" />
+                    <Input label="Template description" value={emailDraft.description} onChange={(value) => setEmailDraft({ ...emailDraft, description: value })} placeholder="What this template is best used for" />
+                  </div>
+                </div>
+
+                <div className="ops-email-step">
+                  <div className="ops-email-step-title"><span>3</span><div><strong>Message</strong><small>Edit normal fields; we build the email for you.</small></div></div>
+                  <Input label="Email subject" required value={emailDraft.subject} onChange={(value) => setEmailDraft({ ...emailDraft, subject: value })} placeholder="What should recipients see in their inbox?" />
+                  <Input label="Preview text" value={emailDraft.preheader} onChange={(value) => setEmailDraft({ ...emailDraft, preheader: value })} placeholder="Short text shown beside the subject in many inboxes" />
+                  <Input label="Main heading" value={emailDraft.heading} onChange={(value) => setEmailDraft({ ...emailDraft, heading: value })} placeholder="A clear headline for the email" />
+                  <Textarea label="Message" required rows={7} value={emailDraft.bodyText} onChange={(value) => setEmailDraft({ ...emailDraft, bodyText: value })} />
+
+                  <div className="ops-personalization-note">
+                    <strong>Personalize automatically</strong>
+                    <span>Use <code>{'{{first_name}}'}</code>, <code>{'{{name}}'}</code> or <code>{'{{email}}'}</code>. The Go backend replaces them for every recipient.</span>
+                  </div>
+
+                  <div className="ops-email-builder-section">
+                    <strong>Branding & images</strong>
+                    <small>Use public HTTPS image links for your club logo, sponsor logo or event banner.</small>
+                    <div className="ops-two-fields">
+                      <Input label="Club / organisation logo URL" value={emailDraft.logoUrl} onChange={(value) => setEmailDraft({ ...emailDraft, logoUrl: value })} placeholder="https://.../club-logo.png" />
+                      <Input label="Partner / sponsor logo URL" value={emailDraft.partnerLogoUrl} onChange={(value) => setEmailDraft({ ...emailDraft, partnerLogoUrl: value })} placeholder="https://.../partner-logo.png" />
+                    </div>
+                    <Input label="Banner / hero image URL" value={emailDraft.heroImageUrl} onChange={(value) => setEmailDraft({ ...emailDraft, heroImageUrl: value })} placeholder="https://.../event-photo.jpg" />
+                    <div className="ops-accent-field">
+                      <Input label="Brand colour" type="color" value={emailDraft.accentColor} onChange={(value) => setEmailDraft({ ...emailDraft, accentColor: value })} />
+                      <span>{emailDraft.accentColor}</span>
+                    </div>
+                  </div>
+
+                  <div className="ops-email-builder-section">
+                    <strong>Optional action button</strong>
+                    <div className="ops-two-fields">
+                      <Input label="Button text" value={emailDraft.buttonLabel} onChange={(value) => setEmailDraft({ ...emailDraft, buttonLabel: value })} placeholder="View event details" />
+                      <Input label="Button link" value={emailDraft.buttonUrl} onChange={(value) => setEmailDraft({ ...emailDraft, buttonUrl: value })} placeholder="https://..." />
+                    </div>
+                    <Input label="Footer" value={emailDraft.footerText} onChange={(value) => setEmailDraft({ ...emailDraft, footerText: value })} placeholder="Rotary Club · Service Above Self" />
+                  </div>
+                </div>
+
+                <div className="ops-email-step">
+                  <div className="ops-email-step-title"><span>4</span><div><strong>Delivery</strong><small>Send on the next worker run or choose a future time.</small></div></div>
+                  <Input label="Schedule for (optional)" type="datetime-local" value={campaignForm.scheduledAt} onChange={(value) => setCampaignForm({ ...campaignForm, scheduledAt: value })} />
+                </div>
+
+                <div className="ops-email-actions">
+                  <SubmitButton loading={actionLoading}>{campaignForm.audience === 'single' ? 'Queue email' : 'Queue notification'}</SubmitButton>
+                  <button className="ops-secondary-action" type="button" disabled={actionLoading} onClick={() => void saveEmailTemplate()}>
+                    {selectedTemplateId ? 'Update template' : 'Save as template'}
+                  </button>
+                </div>
+                <small className="ops-form-note">Automated visitor alerts and next-day attendance thank-yous continue to run independently through the Go mail queue.</small>
+              </form>
+
+              <aside className="ops-email-preview-card">
+                <header>
+                  <div><span>Live preview</span><strong>What recipients will see</strong></div>
+                  <em>{templateMode === 'saved' ? 'Saved template' : templateMode === 'starter' ? 'Starter template' : 'Custom'}</em>
+                </header>
+                <div className="ops-inbox-preview">
+                  <small>SUBJECT</small>
+                  <strong>{emailDraft.subject || 'Your subject will appear here'}</strong>
+                  <span>{emailDraft.preheader || 'Inbox preview text will appear here.'}</span>
+                </div>
+                <div className="ops-email-canvas">
+                  <div className="ops-email-accent" style={{ background: emailDraft.accentColor || '#17458f' }} />
+                  {(safeImageUrl(emailDraft.logoUrl) || safeImageUrl(emailDraft.partnerLogoUrl)) && (
+                    <div className="ops-email-logo-row">
+                      {safeImageUrl(emailDraft.logoUrl) && <img className="ops-email-logo" src={safeImageUrl(emailDraft.logoUrl)} alt="Club logo preview" />}
+                      {safeImageUrl(emailDraft.partnerLogoUrl) && <img className="ops-email-partner-logo" src={safeImageUrl(emailDraft.partnerLogoUrl)} alt="Partner logo preview" />}
+                    </div>
+                  )}
+                  {safeImageUrl(emailDraft.heroImageUrl) && <img className="ops-email-hero-image" src={safeImageUrl(emailDraft.heroImageUrl)} alt="Email banner preview" />}
+                  <div className="ops-email-preview-content">
+                    <h3>{emailDraft.heading || 'Your email heading'}</h3>
+                    <p>{(emailDraft.bodyText || 'Write a friendly message using the editor.').replace(/\{\{first_name\}\}/g, 'Alex').replace(/\{\{name\}\}/g, 'Alex Member').replace(/\{\{email\}\}/g, 'alex@example.com')}</p>
+                    {emailDraft.buttonLabel && safeLinkUrl(emailDraft.buttonUrl) && (
+                      <a href={safeLinkUrl(emailDraft.buttonUrl)} target="_blank" rel="noreferrer" style={{ background: emailDraft.accentColor || '#17458f' }}>{emailDraft.buttonLabel}</a>
+                    )}
+                  </div>
+                  <footer>{emailDraft.footerText || 'Rotary Club'}</footer>
+                </div>
+              </aside>
+            </div>
+
+            <div className="ops-communications-lower">
+              <div className="ops-panel ops-template-library">
+                <header className="ops-section-heading">
+                  <div><span>Template library</span><strong>Reusable club designs</strong></div>
+                  <em>{templates.length} saved</em>
+                </header>
+                <div className="ops-template-list">
+                  {templates.map((template) => (
+                    <article key={template.ID}>
+                      <div className="ops-template-swatch" style={{ background: template.accentColor || '#17458f' }}>{template.logoUrl ? 'LOGO' : template.name.slice(0, 1).toUpperCase()}</div>
+                      <div><strong>{template.name}</strong><span>{template.subject || 'No default subject'}</span><small>{template.description || 'Reusable club email template'}</small></div>
+                      <div className="ops-template-actions">
+                        <button type="button" onClick={() => useSavedTemplate(template)}>Use</button>
+                        <button type="button" onClick={() => void deleteEmailTemplate(template)}>Delete</button>
+                      </div>
+                    </article>
+                  ))}
+                  {!templates.length && <Empty text="No club templates saved yet. Customize a starter template above and choose “Save as template”." />}
+                </div>
+              </div>
+
+              <div className="ops-panel">
+                <header className="ops-section-heading"><div><span>Delivery history</span><strong>Recent notifications</strong></div><em>{dashboard?.pendingMailJobs || 0} jobs pending</em></header>
+                <div className="ops-campaign-list">
+                  {campaigns.map((campaign) => (
+                    <article key={campaign.ID}>
+                      <div>
+                        <strong>{campaign.subject || campaign.name}</strong>
+                        <span>{campaign.audience === 'single' ? campaign.recipientEmail || 'single recipient' : campaign.audience.replace(/_/g, ' ')} · {displayDateTime(campaign.scheduledAt)}</span>
+                      </div>
+                      <em className={`status-${campaign.status}`}>{campaign.status}</em>
+                      <small>{campaign.sentCount} sent · {campaign.failedCount} failed</small>
+                    </article>
+                  ))}
+                  {!campaigns.length && <Empty text="No email notifications have been sent yet." />}
+                </div>
               </div>
             </div>
           </section>

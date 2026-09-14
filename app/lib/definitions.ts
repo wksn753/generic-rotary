@@ -185,6 +185,9 @@ export type EmailCampaign = {
   ID: number;
   name: string;
   audience: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  templateId?: number | null;
   subject: string;
   body: string;
   attendanceDate: string;
@@ -194,6 +197,24 @@ export type EmailCampaign = {
   sentCount: number;
   failedCount: number;
   completedAt?: string | null;
+};
+
+export type EmailTemplate = {
+  ID: number;
+  name: string;
+  description: string;
+  subject: string;
+  preheader: string;
+  accentColor: string;
+  logoUrl: string;
+  partnerLogoUrl: string;
+  heroImageUrl: string;
+  heading: string;
+  bodyText: string;
+  buttonLabel: string;
+  buttonUrl: string;
+  footerText: string;
+  createdBy: string;
 };
 
 export type OperationsDashboard = {

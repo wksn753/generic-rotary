@@ -11,10 +11,20 @@ function requestSession(request: NextRequest) {
   return request.cookies.get(ADMIN_COOKIE_NAME)?.value || getBearerAdminSession(request.headers.get('authorization'));
 }
 
+function normalizeBackendRoot(value?: string) {
+  const cleaned = value?.trim().replace(/\/+$/, '') || '';
+  if (!cleaned) return '';
+  if (cleaned.endsWith('/register')) return cleaned.slice(0, -'/register'.length);
+  if (cleaned.endsWith('/attendance')) return cleaned.slice(0, -'/attendance'.length);
+  return cleaned;
+}
+
 function backendRoot() {
-  const register = process.env.REGISTRATION_API_URL?.trim();
-  if (register?.endsWith('/register')) return register.slice(0, -'/register'.length);
-  return process.env.REGISTRATION_BACKEND_ROOT_URL?.trim() || FALLBACK_BACKEND_ROOT;
+  return (
+    normalizeBackendRoot(process.env.REGISTRATION_BACKEND_ROOT_URL) ||
+    normalizeBackendRoot(process.env.REGISTRATION_API_URL) ||
+    FALLBACK_BACKEND_ROOT
+  );
 }
 
 function noStore(payload: unknown, status: number) {
@@ -62,16 +72,53 @@ async function proxy(request: NextRequest, context: { params: { path: string[] }
     });
     clearTimeout(timeout);
 
-    let payload: unknown;
-    try {
-      payload = await backendResponse.json();
-    } catch {
-      payload = { success: false, message: 'Backend returned an unreadable response.' };
+    const rawBody = await backendResponse.text();
+    let payload: unknown = null;
+    if (rawBody) {
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        payload = null;
+      }
     }
 
     if (backendResponse.status === 401 || backendResponse.status === 403) {
-      return noStore({ success: false, code: 'BACKEND_UNAUTHORIZED', message: 'The backend rejected the admin API key.' }, 502);
+      return noStore({
+        success: false,
+        code: 'BACKEND_UNAUTHORIZED',
+        message: 'The backend rejected the admin API key. Make sure ADMIN_API_KEY is identical on the frontend and Go backend.',
+      }, 502);
     }
+
+    if (payload === null) {
+      const contentType = backendResponse.headers.get('content-type') || 'unknown';
+      console.error(
+        `[admin-ops-proxy] Non-JSON backend response: ${backendResponse.status} ${target.toString()} (${contentType}) ${rawBody.slice(0, 300)}`,
+      );
+
+      if (backendResponse.status === 404) {
+        return noStore({
+          success: false,
+          code: 'OPERATIONS_NOT_DEPLOYED',
+          message: 'The new club-operations API was not found on the Go backend. Deploy the updated backend and point REGISTRATION_BACKEND_ROOT_URL to the backend /api root.',
+        }, 502);
+      }
+
+      if (backendResponse.status >= 500) {
+        return noStore({
+          success: false,
+          code: 'BACKEND_INIT_FAILED',
+          message: 'The Go backend failed while starting or loading club operations. Check the backend deployment logs and database migration/configuration.',
+        }, 502);
+      }
+
+      return noStore({
+        success: false,
+        code: 'BACKEND_INVALID_RESPONSE',
+        message: `The Go backend returned HTTP ${backendResponse.status} instead of JSON for the club-operations API.`,
+      }, 502);
+    }
+
     return noStore(payload, backendResponse.status);
   } catch {
     clearTimeout(timeout);

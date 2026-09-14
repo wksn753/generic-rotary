@@ -75,3 +75,21 @@ A successful attendance confirmation now stores a 30-day `rotary_attendance_prof
 The admin dashboard now has dedicated areas for overview analytics, attendance, club members, donations, goals, Rotary projects/finances/invoices, and communications. Communications are only queued from Next.js; scheduling, retrying, visitor alerts and actual Savara Mail sends run in the Go backend.
 
 Set `REGISTRATION_BACKEND_ROOT_URL` when the backend root cannot be reliably derived from `REGISTRATION_API_URL`. The frontend `ADMIN_API_KEY` must match the Go backend value.
+
+## Club operations deployment order
+
+Deploy the updated Go backend before or together with this frontend. The Attendance tab can continue using the legacy `/api/attendance` endpoint, but Overview, Members, Donations, Goals, Projects, and Communications require the newer `/api/admin/*` routes.
+
+For production, point the operations proxy at the backend API root (not an individual endpoint):
+
+```bash
+REGISTRATION_API_URL=https://your-backend.example.com/api/register
+REGISTRATION_BACKEND_ROOT_URL=https://your-backend.example.com/api
+ADMIN_API_KEY=the-exact-same-value-used-by-the-go-backend
+```
+
+The proxy also normalizes accidental `/register` or `/attendance` suffixes, but `/api` is the recommended explicit root.
+
+## Communications
+
+The admin Communications tab includes single-recipient mail, bulk audiences, visual reusable templates, live email preview, branding/logo/banner fields, scheduling and delivery history. Custom templates are persisted by the Go backend. Run the backend `migrations/20260914_email_templates.sql` migration before using template storage.
