@@ -1836,7 +1836,7 @@ mark {
 .admin-controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: flex-end;
   gap: 12px;
   margin-bottom: 18px;
   padding: 16px;
@@ -2164,7 +2164,7 @@ mark {
 .admin-controls {
   display: grid;
   grid-template-columns: minmax(160px, 0.55fr) minmax(260px, 1.4fr) minmax(120px, 0.35fr) auto;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .admin-search-field {
@@ -2513,7 +2513,7 @@ mark {
 
 @media (max-width: 520px) {
   .attendance-confirm-backdrop {
-    align-items: end;
+    align-items: flex-end;
     padding: 12px;
   }
 

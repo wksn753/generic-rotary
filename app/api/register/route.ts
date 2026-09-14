@@ -3,7 +3,7 @@ import type { RegistrationResponse, Submission } from '../../lib/definitions';
 
 export const runtime = 'nodejs';
 
-export const ATTENDANCE_PROFILE_COOKIE = 'rotary_attendance_profile';
+const ATTENDANCE_PROFILE_COOKIE = 'rotary_attendance_profile';
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
 type RegisterPayload = Partial<Submission> & { honeypot?: string };
